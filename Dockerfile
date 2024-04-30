@@ -1,5 +1,4 @@
-FROM alpine
-MAINTAINER David Personette <dperson@gmail.com>
+FROM alpine:latest
 
 # Install samba
 RUN apk --no-cache --no-progress upgrade && \
@@ -55,7 +54,7 @@ RUN apk --no-cache --no-progress upgrade && \
     echo '' >>$file && \
     rm -rf /tmp/*
 
-COPY samba.sh /usr/bin/
+ADD samba.sh /usr/bin/samba.sh
 
 EXPOSE 137/udp 138/udp 139 445
 
