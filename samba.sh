@@ -300,7 +300,7 @@ else
     fi
 
     # Start Avahi (mDNS / .local discovery)
-    avahi-daemon --no-chroot --debug &
+    # avahi-daemon --no-chroot --debug &
 
     # Start WSDD (Windows "Network" discovery)
     # Optional: bind interface with -i eth0
