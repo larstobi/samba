@@ -87,7 +87,7 @@ import() { local file="$1" name id
 # Return: result
 perms() { local i file=/etc/samba/smb.conf
     for i in $(awk -F ' = ' '/   path = / {print $2}' $file); do
-        chown -Rh smbuser. $i
+        chown -Rh smbuser $i
         find $i -type d ! -perm 775 -exec chmod 775 {} \;
         find $i -type f ! -perm 0664 -exec chmod 0664 {} \;
     done
@@ -299,8 +299,6 @@ else
         dbus-daemon --system --nofork --nopidfile --syslog &
     fi
 
-    # Start Avahi (mDNS / .local discovery)
-    # avahi-daemon --no-chroot --debug &
 
     # Start WSDD (Windows "Network" discovery)
     # Optional: bind interface with -i eth0
