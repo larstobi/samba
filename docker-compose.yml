@@ -1,27 +1,49 @@
-version: '3.4'
+---
+#version: '3.7'
 
 services:
   samba:
-    image: dperson/samba
+    restart: always
+    #image: dperson/samba
+    image: larstobi/samba:2025-12-28
     environment:
-      TZ: 'EST5EDT'
-    networks:
-      - default
+      TZ: "Europe/Oslo"
+      GLOBAL: "hosts allow = 192.168. 10.0.0. 127. 172.16.0.6"
+      GLOBAL1: "load printers = no"
+      GLOBAL2: "security = user"
+      #      GLOBAL3: "interfaces = 192.168.1.41/24"
+      GLOBAL3: "interfaces = 0.0.0.0/0"
+      GLOBAL4: "idmap config * : range          = 1000000-1999999"
+      RECYCLE: "false"
+      WORKGROUP: "SNOTA"
+      NMBD: "true"
+      PERMISSIONS: "true"
+
+      USERID: "1000"
+      GROUPID: "1000"
+
+      USER: "trond;quaeg7aZ;2000"
+      USER3: "aud;ai4Eihae;2002"
+      USER4: "larstobi;auafg7aW;2001"
+
+      SHARE: "NAS;/mnt/nas;yes;no;no;trond larstobi;'none';'none';'Od Network Attached Storage"
+      SHARE2: "NAS-media;/mnt/nas/media;yes;no;no;trond larstobi aud;'none';'none';'Od NAS media"
+      SHARE3: "NAS-home;/mnt/nas/home;yes;no;no;trond larstobi aud;'none';'none';'Od NAS home"
+      SHARE4: "NAS-temp;/mnt/nas/temp;yes;no;no;trond larstobi aud;'none';'none';'Od NAS temp"
+      SHARE5: "NAS-filmer;/mnt/nas/filmer;yes;no;no;trond larstobi aud;'none';'none';'Od NAS filmer"
+
+    #    networks:
+    #      - default
     ports:
       - "137:137/udp"
       - "138:138/udp"
       - "139:139/tcp"
       - "445:445/tcp"
-    read_only: true
+    # read_only: true
     tmpfs:
       - /tmp
-    restart: unless-stopped
     stdin_open: true
     tty: true
     volumes:
       - /mnt:/mnt:z
-      - /mnt2:/mnt2:z
-    command: '-s "Mount;/mnt" -s "Bobs Volume;/mnt2;yes;no;no;bob" -u "bob;bobspasswd" -p'
-
-networks:
-  default:
+    network_mode: host
