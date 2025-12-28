@@ -2,7 +2,7 @@ FROM alpine:latest
 
 # Install samba
 RUN apk --no-cache --no-progress upgrade && \
-    apk --no-cache --no-progress add bash samba shadow tini tzdata avahi avahi-tools wsdd && \
+    apk --no-cache --no-progress add bash samba shadow tini tzdata avahi dbus avahi-tools wsdd && \
     addgroup -S smb && \
     adduser -S -D -H -h /tmp -s /sbin/nologin -G smb -g 'Samba User' smbuser &&\
     file="/etc/samba/smb.conf" && \
