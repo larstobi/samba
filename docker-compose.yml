@@ -10,6 +10,7 @@ services:
       GLOBAL2: "security = user"
       GLOBAL3: "interfaces = 0.0.0.0/0"
       GLOBAL4: "idmap config * : range          = 1000000-1999999"
+      GLOBAL5: "map to guest = never"
       RECYCLE: "false"
       WORKGROUP: "WORKGROUP"
       NMBD: "true"
