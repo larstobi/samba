@@ -1,45 +1,36 @@
 ---
-#version: '3.7'
-
 services:
   samba:
     restart: always
-    #image: dperson/samba
     image: larstobi/samba:2025-12-28
     environment:
       TZ: "Europe/Oslo"
       GLOBAL: "hosts allow = 192.168. 10.0.0. 127. 172.16.0.6"
       GLOBAL1: "load printers = no"
       GLOBAL2: "security = user"
-      #      GLOBAL3: "interfaces = 192.168.1.41/24"
       GLOBAL3: "interfaces = 0.0.0.0/0"
       GLOBAL4: "idmap config * : range          = 1000000-1999999"
       RECYCLE: "false"
-      WORKGROUP: "SNOTA"
+      WORKGROUP: "WORKGROUP"
       NMBD: "true"
       PERMISSIONS: "true"
 
       USERID: "1000"
       GROUPID: "1000"
 
-      USER: "trond;quaeg7aZ;2000"
-      USER3: "aud;ai4Eihae;2002"
-      USER4: "larstobi;auafg7aW;2001"
+      USER: "user1;changeme;2001"
+      USER2: "user2;changeme;2002"
+      USER3: "user3;changeme;2003"
 
-      SHARE: "NAS;/mnt/nas;yes;no;no;trond larstobi;'none';'none';'Od Network Attached Storage"
-      SHARE2: "NAS-media;/mnt/nas/media;yes;no;no;trond larstobi aud;'none';'none';'Od NAS media"
-      SHARE3: "NAS-home;/mnt/nas/home;yes;no;no;trond larstobi aud;'none';'none';'Od NAS home"
-      SHARE4: "NAS-temp;/mnt/nas/temp;yes;no;no;trond larstobi aud;'none';'none';'Od NAS temp"
-      SHARE5: "NAS-filmer;/mnt/nas/filmer;yes;no;no;trond larstobi aud;'none';'none';'Od NAS filmer"
+      SHARE: "NAS;/mnt/nas;yes;no;no;user1 user3;'none';'none';'My Server Network Attached Storage"
+      SHARE2: "Media;/mnt/media;yes;no;no;user1 user3 user2;'none';'none';'My Server Media"
+      SHARE3: "Home;/mnt/home;yes;no;no;user1 user3 user2;'none';'none';'My Server Home"
 
-    #    networks:
-    #      - default
     ports:
       - "137:137/udp"
       - "138:138/udp"
       - "139:139/tcp"
       - "445:445/tcp"
-    # read_only: true
     tmpfs:
       - /tmp
     stdin_open: true
