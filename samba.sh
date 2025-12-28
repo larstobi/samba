@@ -292,6 +292,23 @@ elif [[ $# -ge 1 ]]; then
 elif ps -ef | egrep -v grep | grep -q smbd; then
     echo "Service already running, please restart container to apply changes"
 else
+    # --- Discovery services (mDNS + WS-Discovery) ---
+    # dbus is required by avahi on Alpine in most cases
+    mkdir -p /run/dbus /run/avahi-daemon
+    if [[ ! -S /run/dbus/system_bus_socket ]]; then
+        dbus-daemon --system --nofork --nopidfile --syslog &
+    fi
+
+    # Start Avahi (mDNS / .local discovery)
+    avahi-daemon --no-chroot --debug &
+
+    # Start WSDD (Windows "Network" discovery)
+    # Optional: bind interface with -i eth0
+    wsdd -4 -v &
+
+    # Optional legacy NetBIOS advertising
     [[ ${NMBD:-""} ]] && ionice -c 3 nmbd -D
+
+    # Samba should stay in foreground as PID 1
     exec smbd --foreground --debug-stdout --debuglevel=1 --no-process-group
 fi
