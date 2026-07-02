@@ -2,160 +2,176 @@
 
 # Samba
 
-Samba docker container
+Samba Docker container.
 
 # What is Samba?
 
-Since 1992, Samba has provided secure, stable and fast file and print services
+Since 1992, Samba has provided secure, stable, and fast file and print services
 for all clients using the SMB/CIFS protocol, such as all versions of DOS and
-Windows, OS/2, Linux and many others.
+Windows, OS/2, Linux, and many others.
 
 # How to use this image
 
-By default there are no shares configured, additional ones can be added.
+No shares are configured by default. Add shares with the options described
+below.
 
 ## Hosting a Samba instance
 
-    sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -p
+```console
+sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -p
+```
 
-OR set local storage:
+To use local storage:
 
-    sudo docker run -it --name samba -p 139:139 -p 445:445 \
-                -v /path/to/directory:/mount \
-                -d dperson/samba -p
+```console
+sudo docker run -it --name samba -p 139:139 -p 445:445 \
+            -v /path/to/directory:/mount \
+            -d dperson/samba -p
+```
 
 ## Configuration
 
-    sudo docker run -it --rm dperson/samba -h
-    Usage: samba.sh [-opt] [command]
-    Options (fields in '[]' are optional, '<>' are required):
-        -h          This help
-        -c "<from:to>" setup character mapping for file/directory names
-                    required arg: "<from:to>" character mappings separated by ','
-        -G "<section;parameter>" Provide generic section option for smb.conf
-                    required arg: "<section>" - IE: "share"
-                    required arg: "<parameter>" - IE: "log level = 2"
-        -g "<parameter>" Provide global option for smb.conf
-                    required arg: "<parameter>" - IE: "log level = 2"
-        -i "<path>" Import smbpassword
-                    required arg: "<path>" - full file path in container
-        -n          Start the 'nmbd' daemon to advertise the shares
-        -p          Set ownership and permissions on the shares
-        -r          Disable recycle bin for shares
-        -S          Disable SMB2 minimum version
-        -s "<name;/path>[;browse;readonly;guest;users;admins;writelist;comment]"
-                    Configure a share
-                    required arg: "<name>;</path>"
-                    <name> is how it's called for clients
-                    <path> path to share
-                    NOTE: for the default values, just leave blank
-                    [browsable] default:'yes' or 'no'
-                    [readonly] default:'yes' or 'no'
-                    [guest] allowed default:'yes' or 'no'
-                    NOTE: for user lists below, usernames are separated by ','
-                    [users] allowed default:'all' or list of allowed users
-                    [admins] allowed default:'none' or list of admin users
-                    [writelist] list of users that can write to a RO share
-                    [comment] description of share
-        -u "<username;password>[;ID;group;GID]"       Add a user
-                    required arg: "<username>;<passwd>"
-                    <username> for user
-                    <password> for user
-                    [ID] for user
-                    [group] for user
-                    [GID] for group
-        -w "<workgroup>"       Configure the workgroup (domain) samba should use
-                    required arg: "<workgroup>"
-                    <workgroup> for samba
-        -W          Allow access wide symbolic links
-        -I          Add an include option at the end of the smb.conf
-                    required arg: "<include file path>"
-                    <include file path> in the container, e.g. a bind mount
+```console
+sudo docker run -it --rm dperson/samba -h
+```
 
-    The 'command' (if provided and valid) will be run instead of samba
+```text
+Usage: samba.sh [-opt] [command]
+Options (fields in '[]' are optional, '<>' are required):
+    -h          Show this help
+    -c "<from:to>" Configure character mappings for file and directory names
+                required arg: "<from:to>" character mappings separated by ','
+    -G "<section;parameter>" Configure a generic section option for smb.conf
+                required arg: "<section>" - for example: "share"
+                required arg: "<parameter>" - for example: "log level = 2"
+    -g "<parameter>" Configure a global option for smb.conf
+                required arg: "<parameter>" - for example: "log level = 2"
+    -i "<path>" Import an smbpasswd file
+                required arg: "<path>" - full file path inside the container
+    -n          Start the 'nmbd' daemon to advertise shares
+    -p          Set ownership and permissions on shares
+    -r          Disable the recycle bin for shares
+    -S          Disable the SMB2 minimum version
+    -s "<name;/path>[;browse;readonly;guest;users;admins;writelist;comment]"
+                Configure a share
+                required arg: "<name>;</path>"
+                <name> is the client-visible share name
+                <path> is the path to share
+                NOTE: leave optional fields blank to use default values
+                [browsable] default: 'yes' or 'no'
+                [readonly] default: 'yes' or 'no'
+                [guest] default: 'yes' or 'no'
+                NOTE: usernames in the lists below are separated by ','
+                [users] default: 'all' or list of allowed users
+                [admins] default: 'none' or list of admin users
+                [writelist] list of users that can write to a read-only share
+                [comment] share description
+    -u "<username;password>[;ID;group;GID]"       Add a user
+                required arg: "<username>;<passwd>"
+                <username> user name
+                <password> user password
+                [ID] user ID
+                [group] user group
+                [GID] group ID
+    -w "<workgroup>"       Configure the Samba workgroup or domain
+                required arg: "<workgroup>"
+                <workgroup> Samba workgroup
+    -W          Allow wide symbolic links
+    -I          Add an include option at the end of smb.conf
+                required arg: "<include file path>"
+                <include file path> inside the container, such as a bind mount
 
-ENVIRONMENT VARIABLES
+The 'command' argument, when provided and valid, runs instead of Samba.
+```
 
- * `CHARMAP` - As above, configure character mapping
- * `GENERIC` - As above, configure a generic section option (See NOTE3 below)
- * `GLOBAL` - As above, configure a global option (See NOTE3 below)
- * `IMPORT` - As above, import a smbpassword file
- * `NMBD` - As above, enable nmbd
- * `PERMISSIONS` - As above, set file permissions on all shares
- * `RECYCLE` - As above, disable recycle bin
- * `SHARE` - As above, setup a share (See NOTE3 below)
- * `SMB` - As above, disable SMB2 minimum version
- * `TZ` - Set a timezone, IE `EST5EDT`
- * `USER` - As above, setup a user (See NOTE3 below)
- * `WIDELINKS` - As above, allow access wide symbolic links
- * `WORKGROUP` - As above, set workgroup
- * `USERID` - Set the UID for the samba server's default user (smbuser)
- * `GROUPID` - Set the GID for the samba server's default user (smbuser)
- * `INCLUDE` - As above, add a smb.conf include
- * `VETO` - Configure predefined veto files, default: `yes`; set to `no` to disable
+## Environment variables
 
-**NOTE**: if you enable nmbd (via `-n` or the `NMBD` environment variable), you
-will also want to expose port 137 and 138 with `-p 137:137/udp -p 138:138/udp`.
+ * `CHARMAP` - Configure character mappings
+ * `GENERIC` - Configure a generic section option. See note 3 below.
+ * `GLOBAL` - Configure a global option. See note 3 below.
+ * `IMPORT` - Import an smbpasswd file
+ * `NMBD` - Enable nmbd
+ * `PERMISSIONS` - Set file permissions on all shares
+ * `RECYCLE` - Disable the recycle bin
+ * `SHARE` - Set up a share. See note 3 below.
+ * `SMB` - Disable the SMB2 minimum version
+ * `TZ` - Set a timezone, for example `EST5EDT`
+ * `USER` - Set up a user. See note 3 below.
+ * `WIDELINKS` - Allow wide symbolic links
+ * `WORKGROUP` - Set the workgroup
+ * `USERID` - Set the UID for the default Samba user, `smbuser`
+ * `GROUPID` - Set the GID for the default Samba group, `smb`
+ * `INCLUDE` - Add an smb.conf include
+ * `VETO` - Configure predefined veto files. Defaults to `yes`; set to `no` to disable.
 
-**NOTE2**: there are reports that `-n` and `NMBD` only work if you have the
-container configured to use the hosts network stack.
+**NOTE**: If you enable nmbd with `-n` or the `NMBD` environment variable, also
+expose ports 137 and 138 with `-p 137:137/udp -p 138:138/udp`.
 
-**NOTE3**: optionally supports additional variables starting with the same name,
-IE `SHARE` also will work for `SHARE2`, `SHARE3`... `SHAREx`, etc.
+**NOTE2**: There are reports that `-n` and `NMBD` only work when the container
+uses the host's network stack.
+
+**NOTE3**: Some environment variables support numbered variants. For example,
+`SHARE` also works as `SHARE2`, `SHARE3`, and so on.
 
 ## Examples
 
-Any of the commands can be run at creation with `docker run` or later with
-`docker exec -it samba samba.sh` (as of version 1.3 of docker).
+All commands can be passed at container creation with `docker run`, or run later
+with `docker exec -it samba samba.sh`.
 
 ### Setting the Timezone
 
-    sudo docker run -it -e TZ=EST5EDT -p 139:139 -p 445:445 -d dperson/samba -p
+```console
+sudo docker run -it -e TZ=EST5EDT -p 139:139 -p 445:445 -d dperson/samba -p
+```
 
-### Start an instance creating users and shares:
+### Start an instance with users and shares
 
-    sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -p \
-                -u "example1;badpass" \
-                -u "example2;badpass" \
-                -s "public;/share" \
-                -s "users;/srv;no;no;no;example1,example2" \
-                -s "example1 private share;/example1;no;no;no;example1" \
-                -s "example2 private share;/example2;no;no;no;example2"
+```console
+sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -p \
+            -u "example1;badpass" \
+            -u "example2;badpass" \
+            -s "public;/share" \
+            -s "users;/srv;no;no;no;example1,example2" \
+            -s "example1 private share;/example1;no;no;no;example1" \
+            -s "example2 private share;/example2;no;no;no;example2"
+```
 
 # User Feedback
 
 ## Troubleshooting
 
-* You get the error `Access is denied` (or similar) on the client and/or see
-`change_to_user_internal: chdir_current_service() failed!` in the container
-logs.
+* The client reports `Access is denied` or a similar error, or the container
+logs show `change_to_user_internal: chdir_current_service() failed!`.
 
-Add the `-p` option to the end of your options to the container, or set the
+Add the `-p` option to the end of the container options, or set the
 `PERMISSIONS` environment variable.
 
-    sudo docker run -it --name samba -p 139:139 -p 445:445 \
-                -v /path/to/directory:/mount \
-                -d dperson/samba -p
+```console
+sudo docker run -it --name samba -p 139:139 -p 445:445 \
+            -v /path/to/directory:/mount \
+            -d dperson/samba -p
+```
 
-If changing the permissions of your files is not possible in your setup you
-can instead set the environment variables `USERID` and `GROUPID` to the
-values of the owner of your files.
+If changing file permissions is not possible in your setup, set `USERID` and
+`GROUPID` to the owner values for your files.
 
-* High memory usage by samba. Multiple people have reported high memory usage
-that's never freed by the samba processes. Recommended work around below:
+* Samba uses a high amount of memory. Multiple people have reported memory use
+that is never released by the Samba processes. The recommended workaround is to
+set a container memory limit.
 
-Add the `-m 512m` option to docker run command, or `mem_limit:` in
-docker_compose.yml files, IE:
+Add `-m 512m` to the `docker run` command, or set `mem_limit:` in
+`docker-compose.yml`.
 
-    sudo docker run -it --name samba -m 512m -p 139:139 -p 445:445 \
-                -v /path/to/directory:/mount \
-                -d dperson/samba -p
+```console
+sudo docker run -it --name samba -m 512m -p 139:139 -p 445:445 \
+            -v /path/to/directory:/mount \
+            -d dperson/samba -p
+```
 
-* Attempting to connect with the `smbclient` commandline tool. By default samba
-still tries to use SMB1, which is depriciated and has security issues. This
-container defaults to SMB2, which for no decernable reason even though it's
-supported is disabled by default so run the command as `smbclient -m SMB3`, then
-any other options you would specify.
+* Connections with the `smbclient` command-line tool fail. By default,
+`smbclient` still tries to use SMB1, which is deprecated and has known security
+issues. This container defaults to SMB2 or newer, so run `smbclient -m SMB3`
+followed by any other options you need.
 
 ## Issues
 
