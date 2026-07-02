@@ -65,7 +65,8 @@ Options (fields in '[]' are optional, '<>' are required):
     -d "<args>" Configure wsdd for WS-Discovery
                 arg: "false" disables wsdd; any other value is passed to wsdd
                 example: "-i eth0 --no-http"
-    -p          Set ownership and permissions on shares
+    -p          Create missing share paths and warn about access problems
+    -P          Recursively set ownership and permissions on shares
     -r          Disable the recycle bin for shares
     -S          Disable the SMB2 minimum version
     -s "<name;/path>[;browse;readonly;guest;users;admins;writelist;comment]"
@@ -108,7 +109,10 @@ The 'command' argument, when provided and valid, runs instead of Samba.
  * `IMPORT` - Import an smbpasswd file
  * `NMBD` - Enable nmbd
  * `AVAHI` - Enable Avahi/mDNS discovery. Defaults to `yes`; set to `false` to disable.
- * `PERMISSIONS` - Set file permissions on all shares
+ * `PERMISSIONS` - Prepare share paths. Set to `check` or `create` to create
+   missing share paths and warn about access problems. For backward
+   compatibility, `true` still recursively changes ownership and permissions on
+   all shares. Set to `false` to disable.
  * `RECYCLE` - Disable the recycle bin
  * `SHARE` - Set up a share. See note 4 below.
  * `SMB` - Disable the SMB2 minimum version
@@ -176,17 +180,27 @@ sudo docker run -it --net host -d larstobi/samba -p \
 * The client reports `Access is denied` or a similar error, or the container
 logs show `change_to_user_internal: chdir_current_service() failed!`.
 
-Add the `-p` option to the end of the container options, or set the
-`PERMISSIONS` environment variable.
+Make the container's `smbuser` match the owner of the host files by setting
+`USERID` and `GROUPID`. Samba forces new files to the configured `smbuser` and
+`smb` group by default, so matching those IDs keeps new files writable without
+changing existing host data.
 
 ```console
 sudo docker run -it --name samba -p 139:139 -p 445:445 \
+            -e USERID="$(id -u)" -e GROUPID="$(id -g)" \
             -v /path/to/directory:/mount \
             -d larstobi/samba -p
 ```
 
-If changing file permissions is not possible in your setup, set `USERID` and
-`GROUPID` to the owner values for your files.
+The `-p` option, or `PERMISSIONS=check`, creates missing share directories and
+warns when `smbuser` cannot read, write, and enter an existing share path. It
+does not recursively change existing files.
+
+If you intentionally want the old recursive behavior, use `-P`, set
+`PERMISSIONS=recursive`, or keep an existing `PERMISSIONS=true` configuration.
+This changes every configured share path to be owned by `smbuser:smb`, sets
+directories to `775`, and sets files to `664`. Set `PERMISSIONS=false` to
+disable permission preparation through the environment variable.
 
 * Samba uses a high amount of memory. Multiple people have reported memory use
 that is never released by the Samba processes. The recommended workaround is to
