@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/larstobi/samba/compare/1.1.0...1.1.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* create catia mappings when catia is enabled ([#13](https://github.com/larstobi/samba/issues/13)) ([559ef11](https://github.com/larstobi/samba/commit/559ef1188c8b4caeaca2cb2e33d5565be6b81ae3))
+
 ## [1.1.0](https://github.com/larstobi/samba/compare/1.0.0...1.1.0) (2026-07-02)
 
 
