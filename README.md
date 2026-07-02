@@ -92,6 +92,7 @@ ENVIRONMENT VARIABLES
  * `USERID` - Set the UID for the samba server's default user (smbuser)
  * `GROUPID` - Set the GID for the samba server's default user (smbuser)
  * `INCLUDE` - As above, add a smb.conf include
+ * `VETO` - Configure predefined veto files, default: `yes`; set to `no` to disable
 
 **NOTE**: if you enable nmbd (via `-n` or the `NMBD` environment variable), you
 will also want to expose port 137 and 138 with `-p 137:137/udp -p 138:138/udp`.
