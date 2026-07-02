@@ -4,7 +4,6 @@ env:
   GHCR: ghcr.io
   DOCKER: docker.io
   IMAGENAME: samba
-  IMAGE_VERSION: 1.0.0
 
 on:
   push:
@@ -58,9 +57,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          version="${IMAGE_VERSION}"
+          version="$(
+            python3 -c 'import json; print(json.load(open(".github/.release-please-manifest.json"))["."])'
+          )"
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "IMAGE_VERSION must use MAJOR.MINOR.PATCH format" >&2
+            echo ".github/.release-please-manifest.json must use MAJOR.MINOR.PATCH format for package ." >&2
             exit 1
           fi
 
