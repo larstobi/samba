@@ -79,7 +79,15 @@ env_values() { local prefix="$1"
 charmap() { local chars="$1" file=/etc/samba/smb.conf
     if ! grep -qE '^[[:space:]]*catia:mappings[[:space:]]*=' "$file"; then
         if grep -qE '^[[:space:]]*vfs objects[[:space:]]*=.*(^|[[:space:]])catia([[:space:]]|$)' "$file"; then
-            sed -i '/^[[:space:]]*vfs objects[[:space:]]*=/a \   catia:mappings =' "$file"
+            awk '
+                {
+                    print
+                    if ($0 ~ /^[[:space:]]*vfs objects[[:space:]]*=/ &&
+                            $0 ~ /(^|[[:space:]])catia([[:space:]]|$)/) {
+                        print "   catia:mappings ="
+                    }
+                }
+            ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
         else
             sed -i '/TCP_NODELAY/a \
 \
