@@ -43,6 +43,7 @@ RUN apk --no-cache --no-progress upgrade && \
     echo '   client ipc min protocol = SMB2_10' >>$file && \
     echo '   client max protocol = SMB3' >>$file && \
     echo '   client min protocol = SMB2_10' >>$file && \
+    echo '   smb encrypt = auto' >>$file && \
     echo '   server max protocol = SMB3' >>$file && \
     echo '   server min protocol = SMB2_10' >>$file && \
     echo '' >>$file && \
