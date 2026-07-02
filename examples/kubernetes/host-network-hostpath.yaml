@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: samba-host-network
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: samba-users
+  namespace: samba-host-network
+type: Opaque
+stringData:
+  USER: "user1;changeme;2001"
+  USER2: "user2;changeme;2002"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: samba-config
+  namespace: samba-host-network
+data:
+  TZ: "Europe/Oslo"
+  WORKGROUP: "WORKGROUP"
+  AVAHI: "yes"
+  WSDD: "yes"
+  NMBD: "true"
+  PERMISSIONS: "true"
+  GLOBAL: "server string = Samba on Kubernetes"
+  SHARE: "Public;/share/public;yes;no;yes;all;none;none;Public files"
+  SHARE2: "Private;/share/private;yes;no;no;user1,user2;none;none;Private files"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: samba
+  namespace: samba-host-network
+  labels:
+    app.kubernetes.io/name: samba
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: samba
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: samba
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 30
+      # Uncomment this when the hostPath must stay on a specific node.
+      # nodeSelector:
+      #   kubernetes.io/hostname: storage-node
+      containers:
+        - name: samba
+          image: larstobi/samba:1
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: samba-config
+            - secretRef:
+                name: samba-users
+          ports:
+            - name: netbios-ns
+              containerPort: 137
+              protocol: UDP
+            - name: netbios-dgm
+              containerPort: 138
+              protocol: UDP
+            - name: netbios-ssn
+              containerPort: 139
+              protocol: TCP
+            - name: smb
+              containerPort: 445
+              protocol: TCP
+            - name: wsdd
+              containerPort: 3702
+              protocol: UDP
+            - name: mdns
+              containerPort: 5353
+              protocol: UDP
+            - name: wsdd-http
+              containerPort: 5357
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: smb
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pgrep -x smbd >/dev/null
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: shares
+              mountPath: /share
+      volumes:
+        - name: shares
+          hostPath:
+            path: /srv/samba
+            type: DirectoryOrCreate

@@ -148,6 +148,9 @@ you need, such as:
 All commands can be passed at container creation with `docker run`, or run later
 with `docker exec -it samba samba.sh`.
 
+Kubernetes example manifests are available in
+[`examples/kubernetes`](examples/kubernetes/README.md).
+
 ### Setting the Timezone
 
 ```console

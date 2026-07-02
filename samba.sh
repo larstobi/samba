@@ -48,6 +48,30 @@ run_config() { local handler="$1" raw="$2"
     "$handler" "${args[@]}"
 }
 
+### env_values: read base and numbered environment values in deterministic order
+# Arguments:
+#   prefix) environment variable prefix
+# Return: matching values printed to stdout
+env_values() { local prefix="$1"
+    env | awk -v prefix="$prefix" '
+        {
+            pos = index($0, "=")
+            name = substr($0, 1, pos - 1)
+            value = substr($0, pos + 1)
+
+            if (name == prefix) {
+                order = 0
+            } else if (name ~ "^" prefix "[0-9]+$") {
+                order = substr(name, length(prefix) + 1) + 0
+            } else {
+                next
+            }
+
+            printf "%010d\t%s\n", order, value
+        }
+    ' | sort -n | cut -f2-
+}
+
 ### charmap: setup character mapping for file/directory names
 # Arguments:
 #   chars) from:to character mappings separated by ','
@@ -406,19 +430,19 @@ shift $(( OPTIND - 1 ))
 [[ "${CHARMAP:-""}" ]] && charmap "$CHARMAP"
 while IFS= read -r i; do
     run_config generic "$i"
-done < <(env | awk '/^GENERIC[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+done < <(env_values GENERIC)
 while IFS= read -r i; do
     global "$i"
-done < <(env | awk '/^GLOBAL[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+done < <(env_values GLOBAL)
 [[ "${IMPORT:-""}" ]] && import "$IMPORT"
 [[ "${RECYCLE:-""}" ]] && recycle
 while IFS= read -r i; do
     run_config share "$i"
-done < <(env | awk '/^SHARE[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+done < <(env_values SHARE)
 [[ "${SMB:-""}" ]] && smb
 while IFS= read -r i; do
     run_config user "$i"
-done < <(env | awk '/^USER[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+done < <(env_values USER)
 [[ "${WORKGROUP:-""}" ]] && workgroup "$WORKGROUP"
 [[ "${WIDELINKS:-""}" ]] && widelinks
 [[ "${INCLUDE:-""}" ]] && include "$INCLUDE"
