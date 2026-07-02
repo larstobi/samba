@@ -1,0 +1,19 @@
+misconfigurations:
+  - id: DS-0002
+    paths:
+      - Dockerfile
+    statement: The entrypoint configures Samba users, share permissions, and discovery services at startup, so the container must start as root.
+  - id: KSV-0009
+    paths:
+      - examples/kubernetes/host-network-hostpath.yaml
+    statement: The host-network example intentionally exposes SMB and discovery services directly on the selected node.
+  - id: KSV-0014
+    paths:
+      - examples/kubernetes/host-network-hostpath.yaml
+      - examples/kubernetes/load-balancer-pvc.yaml
+    statement: The Samba entrypoint writes runtime configuration and state before starting services.
+  - id: KSV-0118
+    paths:
+      - examples/kubernetes/host-network-hostpath.yaml
+      - examples/kubernetes/load-balancer-pvc.yaml
+    statement: The Samba entrypoint starts as root to configure users, ownership, permissions, and service state.
