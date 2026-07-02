@@ -26,12 +26,6 @@ services:
       SHARE: "NAS;/mnt/nas;yes;no;no;user1 user3;'none';'none';'My Server Network Attached Storage"
       SHARE2: "Media;/mnt/media;yes;no;no;user1 user3 user2;'none';'none';'My Server Media"
       SHARE3: "Home;/mnt/home;yes;no;no;user1 user3 user2;'none';'none';'My Server Home"
-
-    ports:
-      - "137:137/udp"
-      - "138:138/udp"
-      - "139:139/tcp"
-      - "445:445/tcp"
     tmpfs:
       - /tmp
     stdin_open: true
