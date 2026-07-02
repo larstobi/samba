@@ -4,6 +4,7 @@ env:
   GHCR: ghcr.io
   DOCKER: docker.io
   IMAGENAME: samba
+  IMAGE_VERSION: 1.0.0
 
 on:
   push:
@@ -51,9 +52,30 @@ jobs:
           registry: ${{ env.DOCKER }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+      - name: Prepare image tags
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${IMAGE_VERSION}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "IMAGE_VERSION must use MAJOR.MINOR.PATCH format" >&2
+            exit 1
+          fi
+
+          major="${version%%.*}"
+          minor_patch="${version#*.}"
+          minor="${major}.${minor_patch%%.*}"
+          build_date="$(date -u +'%Y%m%d')"
+          run_number="${GITHUB_RUN_NUMBER:?}"
+
+          {
+            echo "version=${version}"
+            echo "major=${major}"
+            echo "minor=${minor}"
+            echo "build_tag=${version}-${build_date}.${run_number}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -63,9 +85,15 @@ jobs:
           push: true
           tags: |
             ${{ env.GHCR }}/larstobi/${{ env.IMAGENAME }}:latest
-            ${{ env.GHCR }}/larstobi/${{ env.IMAGENAME }}:${{ steps.date.outputs.date }}
+            ${{ env.GHCR }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.major }}
+            ${{ env.GHCR }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.minor }}
+            ${{ env.GHCR }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.version }}
+            ${{ env.GHCR }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.build_tag }}
             ${{ env.DOCKER }}/larstobi/${{ env.IMAGENAME }}:latest
-            ${{ env.DOCKER }}/larstobi/${{ env.IMAGENAME }}:${{ steps.date.outputs.date }}
+            ${{ env.DOCKER }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.major }}
+            ${{ env.DOCKER }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.minor }}
+            ${{ env.DOCKER }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.version }}
+            ${{ env.DOCKER }}/larstobi/${{ env.IMAGENAME }}:${{ steps.image.outputs.build_tag }}
   image-vulnerability-scan:
     runs-on: ubuntu-latest
     needs:

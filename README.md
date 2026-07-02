@@ -15,6 +15,19 @@ Windows, OS/2, Linux, and many others.
 No shares are configured by default. Add shares with the options described
 below.
 
+## Version tags
+
+The image is tagged with semantic version aliases. Use `larstobi/samba:1` to
+track the newest build for major version 1, `larstobi/samba:1.0` to track the
+newest build for minor version 1.0, or `larstobi/samba:1.0.0` for the current
+patch version. These tags are rebuilt periodically so base image and package
+updates are picked up.
+
+Each build also gets a unique traceable tag in the form
+`1.0.0-YYYYMMDD.RUN_NUMBER`. Docker image tags do not support SemVer build
+metadata with `+`, so the date and workflow run number are encoded with Docker
+compatible characters.
+
 ## Hosting a Samba instance
 
 ```console
