@@ -77,12 +77,18 @@ env_values() { local prefix="$1"
 #   chars) from:to character mappings separated by ','
 # Return: configured character mapings
 charmap() { local chars="$1" file=/etc/samba/smb.conf
-    grep -q catia "$file" || sed -i '/TCP_NODELAY/a \
+    if ! grep -qE '^[[:space:]]*catia:mappings[[:space:]]*=' "$file"; then
+        if grep -qE '^[[:space:]]*vfs objects[[:space:]]*=.*(^|[[:space:]])catia([[:space:]]|$)' "$file"; then
+            sed -i '/^[[:space:]]*vfs objects[[:space:]]*=/a \   catia:mappings =' "$file"
+        else
+            sed -i '/TCP_NODELAY/a \
 \
     vfs objects = catia\
     catia:mappings =\
 
                 ' "$file"
+        fi
+    fi
 
     sed -i '/catia:mappings/s| =.*| = '"$chars"'|' "$file"
 }
