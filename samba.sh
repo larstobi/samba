@@ -78,12 +78,14 @@ env_values() { local prefix="$1"
 # Return: configured character mapings
 charmap() { local chars="$1" file=/etc/samba/smb.conf
     if ! grep -qE '^[[:space:]]*catia:mappings[[:space:]]*=' "$file"; then
-        if grep -qE '^[[:space:]]*vfs objects[[:space:]]*=.*(^|[[:space:]])catia([[:space:]]|$)' "$file"; then
+        if grep -qE '^[[:space:]]*vfs objects[[:space:]]*=[[:space:]]*([^[:space:]]+[[:space:]]+)*catia([[:space:]]|$)' "$file"; then
             awk '
                 {
                     print
+                    value = $0
+                    sub(/^[[:space:]]*vfs objects[[:space:]]*=[[:space:]]*/, "", value)
                     if ($0 ~ /^[[:space:]]*vfs objects[[:space:]]*=/ &&
-                            $0 ~ /(^|[[:space:]])catia([[:space:]]|$)/) {
+                            value ~ /(^|[[:space:]])catia([[:space:]]|$)/) {
                         print "   catia:mappings ="
                     }
                 }
