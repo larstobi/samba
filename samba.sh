@@ -141,16 +141,97 @@ import() { local file="$1" name id
     pdbedit -i "smbpasswd:$file"
 }
 
-### perms: fix ownership and permissions of share paths
+### share_paths: read configured share paths
+# Arguments:
+#   none)
+# Return: share paths from smb.conf
+share_paths() { local file=/etc/samba/smb.conf
+    awk -F ' = ' '/   path = / {print $2}' "$file"
+}
+
+### shell_quote: quote a value for /bin/sh
+# Arguments:
+#   value) value to quote
+# Return: quoted value printed to stdout
+shell_quote() {
+    printf '%q' "$1"
+}
+
+### smbuser_can_access: test whether smbuser can use a share directory
+# Arguments:
+#   path) path to test
+# Return: 0 when smbuser can read, write, and enter the directory
+smbuser_can_access() { local path="$1" quoted
+    if ! command -v su >/dev/null 2>&1; then
+        echo "WARNING: cannot verify access to '$path'; su command not found" >&2
+        return 0
+    fi
+
+    quoted="$(shell_quote "$path")"
+    su -s /bin/sh -c "test -d $quoted && test -r $quoted && test -w $quoted && test -x $quoted" \
+            smbuser >/dev/null 2>&1
+}
+
+### prepare_share_paths: create missing share paths and validate access
 # Arguments:
 #   none)
 # Return: result
-perms() { local i file=/etc/samba/smb.conf
+prepare_share_paths() { local i created
     while IFS= read -r i; do
-        chown -Rh smbuser "$i"
+        [[ "$i" ]] || continue
+        created=false
+        if [[ ! -d "$i" ]]; then
+            mkdir -p "$i" || {
+                echo "WARNING: could not create share path '$i'" >&2
+                continue
+            }
+            created=true
+            chown smbuser:smb "$i" 2>/dev/null || chown smbuser "$i"
+            chmod 775 "$i"
+        fi
+
+        if ! smbuser_can_access "$i"; then
+            echo "WARNING: smbuser cannot read/write share path '$i'" >&2
+            echo "WARNING: set USERID/GROUPID to match the host owner, adjust host permissions, or use -P/PERMISSIONS=recursive to apply the legacy recursive fix" >&2
+        elif [[ "$created" == true ]]; then
+            echo "Created share path '$i' for smbuser"
+        fi
+    done < <(share_paths)
+}
+
+### recursive_perms: recursively fix ownership and permissions of share paths
+# Arguments:
+#   none)
+# Return: result
+recursive_perms() { local i
+    while IFS= read -r i; do
+        [[ "$i" ]] || continue
+        chown -Rh smbuser:smb "$i" 2>/dev/null || chown -Rh smbuser "$i"
         find "$i" -type d ! -perm 775 -exec chmod 775 {} \;
         find "$i" -type f ! -perm 0664 -exec chmod 0664 {} \;
-    done < <(awk -F ' = ' '/   path = / {print $2}' "$file")
+    done < <(share_paths)
+}
+
+### perms: prepare share paths according to the selected permission mode
+# Arguments:
+#   mode) check/create, recursive, true, or false
+# Return: result
+perms() { local mode="${1:-check}"
+    case "${mode,,}" in
+        check|create|validate)
+            prepare_share_paths ;;
+        1|true|yes|on)
+            echo "WARNING: PERMISSIONS=$mode uses the legacy recursive permission fix; use PERMISSIONS=check for non-recursive checks" >&2
+            recursive_perms ;;
+        recursive|recurse|fix|force)
+            echo "WARNING: recursively changing ownership and permissions for all share paths" >&2
+            recursive_perms ;;
+        0|false|no|off|none|disabled)
+            return 0 ;;
+        *)
+            echo "WARNING: unknown PERMISSIONS mode '$mode'; using non-recursive check mode" >&2
+            prepare_share_paths ;;
+    esac
 }
 export -f perms
 
@@ -200,7 +281,11 @@ share() { local share="$1" path="$2" browsable="${3:-yes}" ro="${4:-yes}" \
             echo "   comment = $(tr ',' ' ' <<< "$comment")"
         echo ""
     } >> "$file"
-    [[ -d $path ]] || mkdir -p "$path"
+    if [[ ! -d $path ]]; then
+        mkdir -p "$path"
+        chown smbuser:smb "$path" 2>/dev/null || chown smbuser "$path"
+        chmod 775 "$path"
+    fi
 }
 
 ### smb: disable SMB2 minimum
@@ -358,7 +443,8 @@ Options (fields in '[]' are optional, '<>' are required):
     -d \"<args>\" Configure wsdd for WS-Discovery
                 arg: \"false\" disables wsdd; any other value is passed to wsdd
                 example: \"-i eth0 --no-http\"
-    -p          Set ownership and permissions on the shares
+    -p          Create missing share paths and warn about access problems
+    -P          Recursively set ownership and permissions on the shares
     -r          Disable recycle bin for shares
     -S          Disable SMB2 minimum version
     -s \"<name;/path>[;browse;readonly;guest;users;admins;writelist;comment]\"
@@ -404,7 +490,7 @@ The 'command' (if provided and valid) will be run instead of samba
 [[ "${USERID:-""}" =~ ^[0-9]+$ ]] && usermod -u "$USERID" -o smbuser
 [[ "${GROUPID:-""}" =~ ^[0-9]+$ ]] && groupmod -g "$GROUPID" -o smb
 
-while getopts ":hc:G:g:i:nd:prs:Su:Ww:I:" opt; do
+while getopts ":hc:G:g:i:nd:pPrs:Su:Ww:I:" opt; do
     case "$opt" in
         h) usage ;;
         c) charmap "$OPTARG" ;;
@@ -413,7 +499,8 @@ while getopts ":hc:G:g:i:nd:prs:Su:Ww:I:" opt; do
         i) import "$OPTARG" ;;
         n) NMBD="true" ;;
         d) WSDD_ARGS="$OPTARG" ;;
-        p) PERMISSIONS="true" ;;
+        p) PERMISSIONS="check" ;;
+        P) PERMISSIONS="recursive" ;;
         r) recycle ;;
         s) run_config share "$OPTARG" ;;
         S) smb ;;
@@ -446,7 +533,9 @@ done < <(env_values USER)
 [[ "${WORKGROUP:-""}" ]] && workgroup "$WORKGROUP"
 [[ "${WIDELINKS:-""}" ]] && widelinks
 [[ "${INCLUDE:-""}" ]] && include "$INCLUDE"
-[[ "${PERMISSIONS:-""}" ]] && perms &
+if [[ "${PERMISSIONS:-""}" ]]; then
+    perms "$PERMISSIONS" &
+fi
 
 if [[ $# -ge 1 ]] && command -v -- "$1" >/dev/null 2>&1; then
     exec "$@"
