@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-# Install samba
+# Install samba and discovery services
 RUN apk --no-cache --no-progress upgrade && \
     apk --no-cache --no-progress add bash samba shadow tini tzdata avahi dbus avahi-tools wsdd && \
     addgroup -S smb && \
@@ -56,8 +56,9 @@ RUN apk --no-cache --no-progress upgrade && \
     rm -rf /tmp/*
 
 ADD samba.sh /usr/bin/samba.sh
+ADD _etc_avahi_services_samba.service /etc/avahi/services/samba.service
 
-EXPOSE 137/udp 138/udp 139 445
+EXPOSE 137/udp 138/udp 139 445 3702/udp 5353/udp 5357
 
 HEALTHCHECK --interval=60s --timeout=15s \
             CMD smbclient -L \\localhost -U % -m SMB3

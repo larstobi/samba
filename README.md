@@ -1,4 +1,4 @@
-[![logo](https://raw.githubusercontent.com/dperson/samba/master/logo.jpg)](https://www.samba.org)
+[![logo](https://raw.githubusercontent.com/larstobi/samba/master/logo.jpg)](https://www.samba.org)
 
 # Samba
 
@@ -18,21 +18,21 @@ below.
 ## Hosting a Samba instance
 
 ```console
-sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -p
+sudo docker run -it --net host -d larstobi/samba -p
 ```
 
 To use local storage:
 
 ```console
-sudo docker run -it --name samba -p 139:139 -p 445:445 \
+sudo docker run -it --name samba --net host \
             -v /path/to/directory:/mount \
-            -d dperson/samba -p
+            -d larstobi/samba -p
 ```
 
 ## Configuration
 
 ```console
-sudo docker run -it --rm dperson/samba -h
+sudo docker run -it --rm larstobi/samba -h
 ```
 
 ```text
@@ -49,6 +49,9 @@ Options (fields in '[]' are optional, '<>' are required):
     -i "<path>" Import an smbpasswd file
                 required arg: "<path>" - full file path inside the container
     -n          Start the 'nmbd' daemon to advertise shares
+    -d "<args>" Configure wsdd for WS-Discovery
+                arg: "false" disables wsdd; any other value is passed to wsdd
+                example: "-i eth0 --no-http"
     -p          Set ownership and permissions on shares
     -r          Disable the recycle bin for shares
     -S          Disable the SMB2 minimum version
@@ -87,18 +90,22 @@ The 'command' argument, when provided and valid, runs instead of Samba.
 ## Environment variables
 
  * `CHARMAP` - Configure character mappings
- * `GENERIC` - Configure a generic section option. See note 3 below.
- * `GLOBAL` - Configure a global option. See note 3 below.
+ * `GENERIC` - Configure a generic section option. See note 4 below.
+ * `GLOBAL` - Configure a global option. See note 4 below.
  * `IMPORT` - Import an smbpasswd file
  * `NMBD` - Enable nmbd
+ * `AVAHI` - Enable Avahi/mDNS discovery. Defaults to `yes`; set to `false` to disable.
  * `PERMISSIONS` - Set file permissions on all shares
  * `RECYCLE` - Disable the recycle bin
- * `SHARE` - Set up a share. See note 3 below.
+ * `SHARE` - Set up a share. See note 4 below.
  * `SMB` - Disable the SMB2 minimum version
  * `TZ` - Set a timezone, for example `EST5EDT`
- * `USER` - Set up a user. See note 3 below.
+ * `USER` - Set up a user. See note 4 below.
  * `WIDELINKS` - Allow wide symbolic links
  * `WORKGROUP` - Set the workgroup
+ * `WSDD` - Enable wsdd/WS-Discovery for Windows Network discovery. Defaults to `yes`; set to `false` to disable.
+ * `WSDD_ARGS` - Extra flags passed to wsdd, for example `-i eth0 --no-http`. Set to `false` to disable wsdd.
+ * `WSDD_OPTS` - Backward-compatible alias for `WSDD_ARGS`.
  * `USERID` - Set the UID for the default Samba user, `smbuser`
  * `GROUPID` - Set the GID for the default Samba group, `smb`
  * `INCLUDE` - Add an smb.conf include
@@ -110,7 +117,17 @@ expose ports 137 and 138 with `-p 137:137/udp -p 138:138/udp`.
 **NOTE2**: There are reports that `-n` and `NMBD` only work when the container
 uses the host's network stack.
 
-**NOTE3**: Some environment variables support numbered variants. For example,
+**NOTE3**: Avahi and wsdd use multicast discovery. For the server to appear
+automatically in Finder or Windows File Explorer's Network view, use the host
+network stack with `--net host` or an equivalent network setup that passes
+multicast traffic. If you do not use host networking, publish the service ports
+you need, such as:
+
+```console
+-p 139:139 -p 445:445 -p 3702:3702/udp -p 5353:5353/udp -p 5357:5357
+```
+
+**NOTE4**: Some environment variables support numbered variants. For example,
 `SHARE` also works as `SHARE2`, `SHARE3`, and so on.
 
 ## Examples
@@ -121,13 +138,13 @@ with `docker exec -it samba samba.sh`.
 ### Setting the Timezone
 
 ```console
-sudo docker run -it -e TZ=EST5EDT -p 139:139 -p 445:445 -d dperson/samba -p
+sudo docker run -it -e TZ=EST5EDT --net host -d larstobi/samba -p
 ```
 
 ### Start an instance with users and shares
 
 ```console
-sudo docker run -it -p 139:139 -p 445:445 -d dperson/samba -p \
+sudo docker run -it --net host -d larstobi/samba -p \
             -u "example1;badpass" \
             -u "example2;badpass" \
             -s "public;/share" \
@@ -149,7 +166,7 @@ Add the `-p` option to the end of the container options, or set the
 ```console
 sudo docker run -it --name samba -p 139:139 -p 445:445 \
             -v /path/to/directory:/mount \
-            -d dperson/samba -p
+            -d larstobi/samba -p
 ```
 
 If changing file permissions is not possible in your setup, set `USERID` and
@@ -165,7 +182,7 @@ Add `-m 512m` to the `docker run` command, or set `mem_limit:` in
 ```console
 sudo docker run -it --name samba -m 512m -p 139:139 -p 445:445 \
             -v /path/to/directory:/mount \
-            -d dperson/samba -p
+            -d larstobi/samba -p
 ```
 
 * Connections with the `smbclient` command-line tool fail. By default,
@@ -176,4 +193,4 @@ followed by any other options you need.
 ## Issues
 
 If you have any problems with or questions about this image, please contact me
-through a [GitHub issue](https://github.com/dperson/samba/issues).
+through a [GitHub issue](https://github.com/larstobi/samba/issues).

@@ -10,7 +10,7 @@
 #  REQUIREMENTS: ---
 #          BUGS: ---
 #         NOTES: ---
-#        AUTHOR: David Personette (dperson@gmail.com),
+#        AUTHOR: larstobi,
 #  ORGANIZATION:
 #       CREATED: 09/28/2014 12:11
 #      REVISION: 1.0
@@ -183,6 +183,95 @@ widelinks() { local file=/etc/samba/smb.conf \
     sed -i 's/\(follow symlinks = yes\)/'"$replace"'/' $file
 }
 
+### disabled: test whether a config value explicitly disables a feature
+# Arguments:
+#   value) config value
+# Return: 0 when disabled, 1 otherwise
+disabled() { local value="${1:-}"
+    case "${value,,}" in
+        0|false|no|off) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+### samba_workgroup: read the configured Samba workgroup
+# Arguments:
+#   none)
+# Return: workgroup printed to stdout
+samba_workgroup() { local file=/etc/samba/smb.conf
+    awk -F '=' '/^[[:space:]]*workgroup[[:space:]]*=/ {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
+        print $2
+        exit
+    }' "$file"
+}
+
+### start_avahi: launch avahi-daemon in the background
+# Arguments:
+#   enabled) false/no/0/off disables avahi
+# Return: result
+start_avahi() { local enabled="${1:-yes}"
+    disabled "$enabled" && return 0
+
+    if ! command -v avahi-daemon >/dev/null 2>&1; then
+        echo "WARNING: avahi-daemon not found, skipping mDNS discovery" >&2
+        return 0
+    fi
+
+    mkdir -p /run/dbus /run/avahi-daemon
+    if [[ ! -S /run/dbus/system_bus_socket ]]; then
+        dbus-daemon --system --fork --nopidfile
+    fi
+
+    echo "Starting avahi-daemon"
+    avahi-daemon --daemonize --no-drop-root
+}
+
+### wsdd_args: get configured wsdd arguments
+# Arguments:
+#   none)
+# Return: arguments printed to stdout
+wsdd_args() {
+    if [[ ${WSDD_ARGS+x} ]]; then
+        printf '%s' "$WSDD_ARGS"
+    elif [[ ${WSDD_OPTS+x} ]]; then
+        printf '%s' "$WSDD_OPTS"
+    fi
+}
+
+### start_wsdd: launch wsdd in the background
+# Arguments:
+#   args) false/no/0/off disables wsdd; otherwise optional wsdd arguments
+# Return: result
+start_wsdd() { local args="${1:-}" wg extra=() cmd
+    disabled "${WSDD:-yes}" && return 0
+    disabled "$args" && return 0
+
+    if ! command -v wsdd >/dev/null 2>&1; then
+        echo "WARNING: wsdd not found, skipping WS-Discovery" >&2
+        return 0
+    fi
+
+    wg="$(samba_workgroup)"
+    [[ "$args" ]] && read -r -a extra <<< "$args"
+    cmd=(ionice -c 3 wsdd -4)
+    [[ "$wg" ]] && cmd+=(-w "$wg")
+    cmd+=("${extra[@]}")
+
+    echo "Starting wsdd${wg:+ (workgroup=$wg)}${args:+ $args}"
+    "${cmd[@]}" \
+        2>&1 | while IFS= read -r line; do echo "[wsdd] $line"; done &
+}
+
+### start_discovery: launch optional discovery services
+# Arguments:
+#   none)
+# Return: result
+start_discovery() {
+    start_avahi "${AVAHI:-yes}"
+    start_wsdd "$(wsdd_args)"
+}
+
 ### usage: Help
 # Arguments:
 #   none)
@@ -201,6 +290,9 @@ Options (fields in '[]' are optional, '<>' are required):
     -i \"<path>\" Import smbpassword
                 required arg: \"<path>\" - full file path in container
     -n          Start the 'nmbd' daemon to advertise the shares
+    -d \"<args>\" Configure wsdd for WS-Discovery
+                arg: \"false\" disables wsdd; any other value is passed to wsdd
+                example: \"-i eth0 --no-http\"
     -p          Set ownership and permissions on the shares
     -r          Disable recycle bin for shares
     -S          Disable SMB2 minimum version
@@ -233,6 +325,12 @@ Options (fields in '[]' are optional, '<>' are required):
                 required arg: \"<include file path>\"
                 <include file path> in the container, e.g. a bind mount
 
+Environment variables:
+    AVAHI       Set to \"false\" to disable Avahi/mDNS discovery
+    WSDD        Set to \"false\" to disable wsdd/WS-Discovery
+    WSDD_ARGS   Extra flags passed to wsdd, e.g. \"-i eth0 --no-http\"
+    WSDD_OPTS   Backward-compatible alias for WSDD_ARGS
+
 The 'command' (if provided and valid) will be run instead of samba
 " >&2
     exit $RC
@@ -241,7 +339,7 @@ The 'command' (if provided and valid) will be run instead of samba
 [[ "${USERID:-""}" =~ ^[0-9]+$ ]] && usermod -u $USERID -o smbuser
 [[ "${GROUPID:-""}" =~ ^[0-9]+$ ]] && groupmod -g $GROUPID -o smb
 
-while getopts ":hc:G:g:i:nprs:Su:Ww:I:" opt; do
+while getopts ":hc:G:g:i:nd:prs:Su:Ww:I:" opt; do
     case "$opt" in
         h) usage ;;
         c) charmap "$OPTARG" ;;
@@ -249,6 +347,7 @@ while getopts ":hc:G:g:i:nprs:Su:Ww:I:" opt; do
         g) global "$OPTARG" ;;
         i) import "$OPTARG" ;;
         n) NMBD="true" ;;
+        d) WSDD_ARGS="$OPTARG" ;;
         p) PERMISSIONS="true" ;;
         r) recycle ;;
         s) eval share $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< $OPTARG) ;;
@@ -292,21 +391,7 @@ elif [[ $# -ge 1 ]]; then
 elif ps -ef | egrep -v grep | grep -q smbd; then
     echo "Service already running, please restart container to apply changes"
 else
-    # --- Discovery services (mDNS + WS-Discovery) ---
-    # dbus is required by avahi on Alpine in most cases
-    mkdir -p /run/dbus /run/avahi-daemon
-    if [[ ! -S /run/dbus/system_bus_socket ]]; then
-        dbus-daemon --system --nofork --nopidfile --syslog &
-    fi
-
-
-    # Start WSDD (Windows "Network" discovery)
-    # Optional: bind interface with -i eth0
-    wsdd -4 -v &
-
-    # Optional legacy NetBIOS advertising
+    start_discovery
     [[ ${NMBD:-""} ]] && ionice -c 3 nmbd -D
-
-    # Samba should stay in foreground as PID 1
-    exec smbd --foreground --debug-stdout --debuglevel=1 --no-process-group
+    exec ionice -c 3 smbd -F --debug-stdout --debuglevel=1 --no-process-group
 fi
